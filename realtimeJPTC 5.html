@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>即時日繁字幕</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0d0d0f;--bg2:#16161a;--bg3:#1e1e24;--border:#2a2a35;--amber:#f59e0b;--green:#22c55e;--text:#e2e2e8;--text-dim:#6b7280;--text-mid:#9ca3af;}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{background:var(--bg);color:var(--text);font-family:'Noto Sans TC',sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+  header{padding:20px 20px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;}
+  .logo-icon{width:38px;height:38px;background:var(--amber);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+  header h1{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;}
+  header span{margin-left:auto;font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+  main{flex:1;padding:16px;width:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:16px;}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:20px;}
+  .card-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:12px;}
+  .tip{background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--text-mid);line-height:1.8;}
+  .tip strong{color:var(--amber);}
+  .subtitle-area{background:#000;border-radius:14px;padding:28px 20px 24px;min-height:160px;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;position:relative;border:1px solid var(--border);}
+  .subtitle-ja{font-size:20px;line-height:1.6;color:#fff;font-weight:400;min-height:32px;}
+  .subtitle-zh{font-size:18px;line-height:1.6;color:var(--amber);font-weight:300;min-height:29px;}
+  .subtitle-dim{opacity:0.35;}
+  .status-badge{position:absolute;top:14px;right:16px;display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--text-dim);flex-shrink:0;}
+  .dot.rec{background:#ef4444;animation:blink 1.2s ease-in-out infinite;}
+  .dot.proc{background:var(--amber);animation:blink 0.7s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
+  .timer{position:absolute;top:14px;left:16px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-dim);}
+  .controls{display:flex;gap:10px;}
+  .btn-start{flex:1;padding:0 16px;height:56px;background:var(--amber);color:#000;font-family:'Syne',sans-serif;font-size:16px;font-weight:700;border:none;border-radius:10px;cursor:pointer;touch-action:manipulation;}
+  .btn-start:active{background:#fbbf24;}
+  .btn-stop{flex:1;height:56px;padding:0 16px;background:transparent;color:#fca5a5;font-family:'Syne',sans-serif;font-size:16px;font-weight:700;border:1px solid rgba(239,68,68,0.4);border-radius:10px;cursor:pointer;display:none;touch-action:manipulation;}
+  .btn-stop:active{background:rgba(239,68,68,0.15);}
+  .btn-dl{height:56px;padding:0 16px;background:var(--bg2);color:var(--text);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;border:1px solid var(--border);border-radius:10px;cursor:pointer;white-space:nowrap;touch-action:manipulation;}
+  .btn-dl:disabled{opacity:0.3;cursor:not-allowed;}
+  .log-header{display:grid;grid-template-columns:52px 1fr 1fr;gap:10px;padding:0 10px 10px;border-bottom:1px solid var(--border);margin-bottom:4px;}
+  .log-header span{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);text-transform:uppercase;}
+  .log-wrap{max-height:320px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .log-entry{display:grid;grid-template-columns:52px 1fr 1fr;gap:10px;padding:10px;border-radius:8px;align-items:start;}
+  .log-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--amber);padding-top:2px;}
+  .log-ja{font-size:12px;line-height:1.7;color:var(--text);}
+  .log-zh{font-size:12px;line-height:1.7;color:var(--text-mid);}
+  .log-empty{text-align:center;padding:32px 16px;font-size:12px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;}
+  .key-row{display:flex;gap:8px;align-items:center;}
+  .key-label{font-size:12px;color:var(--text-dim);width:90px;flex-shrink:0;}
+  .key-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:16px;outline:none;-webkit-appearance:none;}
+  .key-input:focus{border-color:var(--amber);}
+  .btn-save{background:var(--amber);color:#000;border:none;border-radius:8px;padding:12px 18px;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap;touch-action:manipulation;}
+  .save-ok{font-size:12px;color:var(--green);margin-top:8px;display:none;}
+  .seg-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  .seg-btn{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;cursor:pointer;font-size:13px;font-family:'JetBrains Mono',monospace;color:var(--text-mid);touch-action:manipulation;}
+  .seg-btn.active{border-color:var(--amber);color:var(--amber);background:rgba(245,158,11,0.08);}
+  footer{text-align:center;padding:16px;font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;border-top:1px solid var(--border);line-height:1.7;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo-icon">🎌</div>
+  <h1>即時日繁字幕</h1>
+  <span>JP→TC v1.0</span>
+</header>
+<main>
+  <div class="tip">
+    <strong>🎙️ 使用方式：</strong>先在下方設定填入 OpenAI API Key，再點「開始錄製」。Safari 會請求麥克風權限，允許即可。對準說話者收音，日文字幕自動翻成繁體中文。
+  </div>
+  <div class="subtitle-area">
+    <div class="timer" id="timer">00:00</div>
+    <div class="status-badge">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">待機中</span>
+    </div>
+    <div class="subtitle-ja subtitle-dim" id="subtitleJa">按「開始錄製」後日文原文將出現在這裡</div>
+    <div class="subtitle-zh subtitle-dim" id="subtitleZh">繁體中文翻譯將出現在這裡</div>
+  </div>
+  <div class="controls">
+    <button class="btn-start" id="btnStart" onclick="startCapture()">▶ 開始錄製</button>
+    <button class="btn-stop"  id="btnStop"  onclick="stopCapture()">⏹ 停止</button>
+    <button class="btn-dl"    id="btnDl"    onclick="downloadTxt()" disabled>📥 下載</button>
+  </div>
+  <div class="card">
+    <div class="card-title">完整逐字稿</div>
+    <div class="log-header">
+      <span>時間</span><span>日文原文</span><span>中文翻譯</span>
+    </div>
+    <div class="log-wrap" id="logWrap">
+      <div class="log-empty" id="logEmpty">逐字稿將在這裡累積…</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">設定</div>
+    <div style="margin-bottom:20px;">
+      <div class="card-title" style="font-size:11px;margin-bottom:8px;">OpenAI API Key
+        <span style="font-family:'JetBrains Mono';font-size:10px;color:var(--amber);letter-spacing:0;text-transform:none;font-weight:400;margin-left:8px;">存在本機，不上傳</span>
+      </div>
+      <div class="key-row">
+        <span class="key-label">OpenAI Key</span>
+        <input class="key-input" type="text" id="inputOpenaiKey" placeholder="sk-..."
+               autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <button class="btn-save" onclick="saveKey()">儲存</button>
+      </div>
+      <div class="save-ok" id="saveStatus">✓ 已儲存</div>
+    </div>
+    <div>
+      <div class="card-title" style="font-size:11px;margin-bottom:8px;">每段辨識長度（越短延遲越低）</div>
+      <div class="seg-row">
+        <button class="seg-btn" onclick="setSeg(5000,this)">5 秒</button>
+        <button class="seg-btn active" onclick="setSeg(8000,this)">8 秒</button>
+        <button class="seg-btn" onclick="setSeg(12000,this)">12 秒</button>
+        <button class="seg-btn" onclick="setSeg(18000,this)">18 秒</button>
+      </div>
+    </div>
+  </div>
+</main>
+<footer>音訊傳送至 OpenAI Whisper（日文辨識）· 翻譯由 GPT-4o-mini 處理 · API Key 僅存於本機</footer>
+<script>
+function getKey(){return localStorage.getItem('live_openai_key')||'';}
+function saveKey(){
+  var v=document.getElementById('inputOpenaiKey').value.trim();
+  if(v) localStorage.setItem('live_openai_key',v);
+  var s=document.getElementById('saveStatus');
+  s.style.display='block';
+  setTimeout(function(){s.style.display='none';},2000);
+}
+(function(){
+  var k=localStorage.getItem('live_openai_key')||'';
+  if(k) document.getElementById('inputOpenaiKey').value=k;
+})();
+var SEGMENT_MS=8000;
+function setSeg(ms,btn){
+  SEGMENT_MS=ms;
+  document.querySelectorAll('.seg-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+}
+var mediaStream=null,mediaRecorder=null,audioChunks=[];
+var isRecording=false,segmentTimer=null,startTime=null,segmentStart=null;
+var timerInterval=null,logEntries=[];
+function setStatus(type,text){
+  var dot=document.getElementById('statusDot'),span=document.getElementById('statusText');
+  dot.className='dot'+(type?' '+type:'');
+  span.textContent=text;
+  span.style.color=type==='rec'?'#ef4444':type==='proc'?'var(--amber)':'var(--text-dim)';
+}
+function setSubtitle(ja,zh,dim){
+  var elJa=document.getElementById('subtitleJa'),elZh=document.getElementById('subtitleZh');
+  if(ja!==null) elJa.textContent=ja;
+  if(zh!==null) elZh.textContent=zh;
+  elJa.classList.toggle('subtitle-dim',!!dim);
+  elZh.classList.toggle('subtitle-dim',!!dim);
+}
+function formatTime(ms){
+  var s=Math.floor(Math.max(0,ms)/1000);
+  return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+}
+function startTimer(){
+  timerInterval=setInterval(function(){
+    if(startTime) document.getElementById('timer').textContent=formatTime(Date.now()-startTime);
+  },1000);
+}
+function stopTimer(){clearInterval(timerInterval);timerInterval=null;}
+function addLogRow(timeMs,ja,zh){
+  var wrap=document.getElementById('logWrap'),empty=document.getElementById('logEmpty');
+  if(empty) empty.remove();
+  var t=formatTime(timeMs);
+  logEntries.push({time:t,ja:ja,zh:zh});
+  var div=document.createElement('div');
+  div.className='log-entry';
+  div.innerHTML='<div class="log-time">'+t+'</div><div class="log-ja">'+esc(ja)+'</div><div class="log-zh">'+esc(zh)+'</div>';
+  wrap.appendChild(div);
+  wrap.scrollTop=wrap.scrollHeight;
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function bestMime(){
+  var c=['audio/mp4;codecs=mp4a.40.2','audio/mp4','audio/webm;codecs=opus','audio/webm'];
+  return c.find(function(t){return MediaRecorder.isTypeSupported(t);})||'';
+}
+function mimeExt(mime){
+  if(!mime) return 'mp4';
+  if(mime.includes('ogg')) return 'ogg';
+  if(mime.includes('webm')) return 'webm';
+  return 'mp4';
+}
+async function startCapture(){
+  var key=getKey();
+  if(!key){alert('請先在下方填入 OpenAI API Key 並按「儲存」。');return;}
+  try{
+    var mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,sampleRate:16000}});
+    mediaStream=mic;
+    isRecording=true;startTime=Date.now();logEntries=[];
+    document.getElementById('btnStart').style.display='none';
+    document.getElementById('btnStop').style.display='block';
+    document.getElementById('btnDl').disabled=true;
+    document.getElementById('logWrap').innerHTML='<div class="log-empty" id="logEmpty">辨識中，請稍候第一段字幕…</div>';
+    setStatus('rec','錄製中');
+    setSubtitle('','',false);
+    startTimer();launchSegment();
+  }catch(e){
+    if(e.name==='NotAllowedError') alert('需要麥克風權限。\n請在 Safari 設定中允許麥克風，再重試。');
+    else alert('啟動失敗：'+e.message);
+  }
+}
+function launchSegment(){
+  if(!isRecording) return;
+  audioChunks=[];segmentStart=Date.now()-startTime;
+  var mime=bestMime();
+  try{mediaRecorder=new MediaRecorder(mediaStream,mime?{mimeType:mime}:{});}
+  catch(e){mediaRecorder=new MediaRecorder(mediaStream);}
+  mediaRecorder.ondataavailable=function(e){if(e.data&&e.data.size>0) audioChunks.push(e.data);};
+  mediaRecorder.onstop=function(){
+    var blob=new Blob(audioChunks,{type:mediaRecorder.mimeType||'audio/mp4'});
+    var at=segmentStart;
+    processSegment(blob,at).finally(function(){if(isRecording) launchSegment();});
+  };
+  mediaRecorder.start(300);
+  segmentTimer=setTimeout(function(){
+    if(mediaRecorder&&mediaRecorder.state==='recording') mediaRecorder.stop();
+  },SEGMENT_MS);
+}
+async function processSegment(blob,elapsedAtStart){
+  if(blob.size<4000) return;
+  setStatus('proc','辨識中…');
+  try{
+    var key=getKey(),ext=mimeExt(blob.type);
+    var form=new FormData();
+    form.append('file',blob,'seg.'+ext);
+    form.append('model','whisper-1');
+    form.append('language','ja');
+    form.append('prompt','これは日本語の会議です。正確に文字起こしをしてください。');
+    var wRes=await fetch('https://api.openai.com/v1/audio/transcriptions',{method:'POST',headers:{Authorization:'Bearer '+key},body:form});
+    if(!wRes.ok){
+      if(wRes.status===400){setStatus('rec','錄製中');return;}
+      var err=await wRes.json().catch(function(){return{};});
+      throw new Error((err&&err.error&&err.error.message)||'Whisper '+wRes.status);
+    }
+    var wData=await wRes.json(),ja=(wData.text||'').trim();
+    if(!ja){setStatus('rec','錄製中');return;}
+    setSubtitle(ja,'翻譯中…',false);
+    var tRes=await fetch('https://api.openai.com/v1/chat/completions',{
+      method:'POST',
+      headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},
+      body:JSON.stringify({model:'gpt-4o-mini',max_tokens:400,messages:[
+        {role:'system',content:'你是專業口譯員。將日文翻譯為繁體中文（台灣慣用語）。專有名詞、公司名、人名請保留原文並附中文。只輸出翻譯結果。'},
+        {role:'user',content:ja}
+      ]})
+    });
+    var zh='';
+    if(tRes.ok){var td=await tRes.json();zh=((td.choices&&td.choices[0]&&td.choices[0].message&&td.choices[0].message.content)||'').trim();}
+    setSubtitle(ja,zh||'（翻譯失敗）',false);
+    addLogRow(elapsedAtStart,ja,zh);
+  }catch(e){console.error('[processSegment]',e.message);}
+  if(isRecording) setStatus('rec','錄製中');
+}
+function stopCapture(){
+  if(!isRecording) return;
+  isRecording=false;clearTimeout(segmentTimer);stopTimer();
+  if(mediaRecorder&&mediaRecorder.state!=='inactive') mediaRecorder.stop();
+  if(mediaStream){mediaStream.getTracks().forEach(function(t){t.stop();});mediaStream=null;}
+  document.getElementById('btnStart').style.display='';
+  document.getElementById('btnStop').style.display='none';
+  document.getElementById('btnDl').disabled=logEntries.length===0;
+  setStatus('','已停止');
+  document.getElementById('subtitleJa').classList.add('subtitle-dim');
+  document.getElementById('subtitleZh').classList.add('subtitle-dim');
+}
+function downloadTxt(){
+  if(!logEntries.length) return;
+  var date=new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit'});
+  var header='即時日繁逐字稿\n日期：'+date+'\n'+'─'.repeat(50)+'\n\n';
+  var body=logEntries.map(function(e){return '['+e.time+']\n'+e.ja+'\n'+e.zh+'\n';}).join('\n');
+  var blob=new Blob([header+body],{type:'text/plain;charset=utf-8'});
+  var url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='逐字稿_'+date.replace(/\//g,'-')+'.txt';a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
